@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - Background Check</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: #f3f6fc;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+
+    header {
+      background-color: #007bff;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      position: relative;
+    }
+
+    
+    #logoutBtn {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.3s ease;
+    }
+
+    #logoutBtn:hover {
+      background-color: #c82333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 30px auto;
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .controls input,
+    .controls select {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+      width: 230px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+
+    table th,
+    table td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    table th {
+      background-color: #f0f3f9;
+    }
+
+    tr:hover {
+      background: #f9fbff;
+    }
+
+    button {
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+      color: white;
+      font-size: 13px;
+      margin-right: 5px;
+      transition: 0.3s ease;
+    }
+
+    button:hover {
+      opacity: 0.8;
+    }
+
+    .verify {
+      background: #28a745;
+    }
+
+    .reject {
+      background: #dc3545;
+    }
+
+    .view {
+      background: #17a2b8;
+    }
+
+    .status {
+      font-weight: 600;
+      border-radius: 4px;
+      padding: 3px 7px;
+    }
+
+    .pending {
+      color: #856404;
+      background: #fff3cd;
+    }
+
+    .verified {
+      color: #155724;
+      background: #d4edda;
+    }
+
+    .rejected {
+      color: #721c24;
+      background: #f8d7da;
+    }
+
+    #detailModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 700px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-content h2 {
+      margin-top: 0;
+    }
+
+    .close-btn {
+      float: right;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+
+    .no-records {
+      text-align: center;
+      color: #666;
+      padding: 20px;
+      font-style: italic;
+    }
+
+    footer {
+      text-align: center;
+      margin: 20px 0;
+      font-size: 13px;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    Admin Dashboard - Employee Background Verification
+    <button id="logoutBtn">Logout</button>
+  </header>
+
+  <div class="container">
+    <div class="controls">
+      <input type="text" id="searchBox" placeholder="Search by name or email..." />
+      <select id="statusFilter">
+        <option value="all">All Status</option>
+        <option value="Pending">Pending</option>
+        <option value="Verified">Verified</option>
+        <option value="Rejected">Rejected</option>
+      </select>
+    </div>
+
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <p id="noRecords" class="no-records" style="display: none;">
+      No matching records found.
+    </p>
+  </div>
+
+  
+  <div id="detailModal">
+    <div class="modal-content">
+      <button class="close-btn" onclick="closeModal()">Close</button>
+      <h2>Employee Details</h2>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <footer>© 2025 Employee Background Verification Portal | Admin View</footer>
+
+  <script>
+    const tableBody = document.querySelector("#dataTable tbody");
+    const searchBox = document.getElementById("searchBox");
+    const statusFilter = document.getElementById("statusFilter");
+    const modal = document.getElementById("detailModal");
+    const modalBody = document.getElementById("modalBody");
+    const noRecords = document.getElementById("noRecords");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    let submissions = JSON.parse(localStorage.getItem("submissions") || "[]");
+
+    function renderTable() {
+      tableBody.innerHTML = "";
+
+      const searchText = searchBox.value.toLowerCase();
+      const filter = statusFilter.value;
+
+      const filtered = submissions.filter((item) => {
+        const matchesSearch =
+          item.fullname.toLowerCase().includes(searchText) ||
+          item.email.toLowerCase().includes(searchText);
+        const matchesStatus = filter === "all" || item.status === filter;
+        return matchesSearch && matchesStatus;
+      });
+
+      if (filtered.length === 0) {
+        noRecords.style.display = "block";
+      } else {
+        noRecords.style.display = "none";
+      }
+
+      filtered.forEach((item, index) => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${item.fullname}</td>
+          <td>${item.email}</td>
+          <td>${item.phone}</td>
+          <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
+          <td>
+            <button class="view" onclick="viewDetails('${item.email}')">View</button>
+            <button class="verify" onclick="updateStatus('${item.email}', 'Verified')">Verify</button>
+            <button class="reject" onclick="updateStatus('${item.email}', 'Rejected')">Reject</button>
+          </td>
+        `;
+
+        tableBody.appendChild(tr);
+      });
+    }
+
+    function updateStatus(email, newStatus) {
+      const idx = submissions.findIndex((s) => s.email === email);
+      if (idx !== -1) {
+        submissions[idx].status = newStatus;
+        localStorage.setItem("submissions", JSON.stringify(submissions));
+        renderTable();
+        alert(`Status updated to "${newStatus}" for ${submissions[idx].fullname}`);
+      }
+    }
+
+    function viewDetails(email) {
+      const data = submissions.find((s) => s.email === email);
+      if (!data) return;
+
+      modalBody.innerHTML = `
+        <p><strong>Full Name:</strong> ${data.fullname}</p>
+        <p><strong>Date of Birth:</strong> ${data.dob}</p>
+        <p><strong>Gender:</strong> ${data.gender}</p>
+        <p><strong>Phone:</strong> ${data.phone}</p>
+        <p><strong>Email:</strong> ${data.email}</p>
+        <p><strong>Address:</strong> ${data.address}</p>
+        <hr>
+        <h3>Education</h3>
+        <p><strong>Qualification:</strong> ${data.qualification}</p>
+        <p><strong>University:</strong> ${data.university}</p>
+        <p><strong>Graduation Year:</strong> ${data.graduationYear}</p>
+        <p><strong>CGPA:</strong> ${data.cgpa}</p>
+        <hr>
+        <h3>Previous Employment</h3>
+        <p><strong>Company:</strong> ${data.prevCompany || "N/A"}</p>
+        <p><strong>Job Title:</strong> ${data.jobTitle || "N/A"}</p>
+        <p><strong>Duration:</strong> ${data.duration || "N/A"}</p>
+        <p><strong>Reason for Leaving:</strong> ${data.reason || "N/A"}</p>
+        <p><strong>HR Contact:</strong> ${data.hrContact || "N/A"}</p>
+        <hr>
+        <h3>Identity Verification</h3>
+        <p><strong>Aadhaar:</strong> ${data.aadhaar}</p>
+        <p><strong>PAN:</strong> ${data.pan}</p>
+        <hr>
+        <h3>References</h3>
+        <p><strong>Name:</strong> ${data.refName || "N/A"}</p>
+        <p><strong>Contact:</strong> ${data.refContact || "N/A"}</p>
+        <p><strong>Relation:</strong> ${data.refRelation || "N/A"}</p>
+        <hr>
+        <p><strong>Current Status:</strong> 
+          <span class="status ${data.status.toLowerCase()}">${data.status}</span>
+        </p>
+      `;
+      modal.style.display = "flex";
+    }
+
+    function closeModal() {
+      modal.style.display = "none";
+    }
+
+    searchBox.addEventListener("input", renderTable);
+    statusFilter.addEventListener("change", renderTable);
+
+    renderTable();
+
+
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("loggedInUser"); 
+      alert("🔒 Admin logged out successfully!");
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>
